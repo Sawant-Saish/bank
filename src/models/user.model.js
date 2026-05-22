@@ -1,28 +1,30 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, "Name is required"],
-    unique: true,
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+      unique: true,
+    },
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      trim: true,
+      lowercase: true,
+      match: [/^\S+@\S+\.\S+$/, "Please fill a valid email address"],
+      unique: [true, "Email already exists"],
+    },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      minlength: [6, "Password must be at least 6 characters"],
+      select: false, // Exclude password from query results by default
+    },
   },
-  email: {
-    type: String,
-    required: [true, "Email is required"],
-    trim: true,
-    lowercase: true,
-    match: [/^\S+@\S+\.\S+$/, "Please fill a valid email address"],
-    unique: [true, "Email already exists"],
-  },
-  password: {
-    type: String,
-    required: [true, "Password is required"],
-    minlength: [6, "Password must be at least 6 characters"],
-    select: false, // Exclude password from query results by default
-  },
-  timestamps: true,
-});
+  { timestamps: true }
+);
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
