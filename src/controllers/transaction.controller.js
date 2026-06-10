@@ -2,6 +2,7 @@ const transactionModel = require("../models/transaction.model");
 const ledgerModel = require("../models/ledger.model");
 const accountModel = require("../models/account.model");
 const emailService = require("../services/email.service");
+const mongoose = require("mongoose");
 
 /**
  * - create a new transaction
@@ -22,7 +23,7 @@ async function createTransactionController(req, res) {
   /**
    * 1. Validate request body
    */
-  const { fromAmount, toAccount, amount, idempotencyKey } = req.body;
+  const { fromAccount, toAccount, amount, idempotencyKey } = req.body;
 
   if (!fromAmount || !toAccount || !amount || !idempotencyKey) {
     return res.status(400).json({
@@ -94,4 +95,68 @@ async function createTransactionController(req, res) {
       message: `Insufficient balance. Your current balance is ${balance}`,
     });
   }
+
+  /**
+   * 5. create a new transaction with pending status
+   */
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  const newTransaction = await transactionModel.create(
+    {
+      fromAccount,
+      toAccount,
+      amount,
+      idempotencyKey,
+      status: "PENDING",
+    },
+    { session }
+  );
+
+  const debitLedgerEntry = await ledgerModel.create(
+    {
+      account: fromAccount,
+      type: "DEBIT",
+      amount: amount,
+      transaction: newTransaction._id,
+    },
+    { session }
+  );
+
+  const creditLedgerEntry = await ledgerModel.create(
+    {
+      account: toAccount,
+      type: "CREDIT",
+      amount: amount,
+      transaction: newTransaction._id,
+    },
+    { session }
+  );
+
+  newTransaction.status = "COMPLETED";
+  await newTransaction.save({ session });
+
+  await session.commitTransaction();
+  session.endSession();
+
+  /**
+   * 10. send email notification to sender and receiver
+   */
+
+  await emailService.sendTransactionEmail(
+    req.user.email,
+    req.useramount,
+    fromAccount,
+    toAccount
+  );
+
+  return res.status(200).json({
+    message: "Transaction successful",
+    transaction: newTransaction,
+  });
 }
+
+module.exports = {
+  createTransactionController,
+};
