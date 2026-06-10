@@ -10,8 +10,8 @@ const transactionRouter = Router();
  */
 
 transactionRouter.post(
-  "/",
-  authMiddleware.authMiddleware,
+  "/system/initial-funds",
+  authMiddleware.authSystemMiddleware,
   transactionController.createTransaction
 );
 

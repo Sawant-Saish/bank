@@ -8,7 +8,6 @@ const accountSchema = new mongoose.Schema(
       required: [true, "User is required"],
       unique: true,
       ref: "User",
-      index: true,
     },
     status: {
       type: String,
@@ -28,7 +27,7 @@ const accountSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-accountSchema.index({ user: 1 }, { status: 1 });
+accountSchema.index({ user: 1, status: 1 });
 
 accountSchema.methods.getBalance = async function () {
   const balanceData = await ledgerModel.aggregate([
